@@ -17,7 +17,7 @@
 
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
-QUICKBOX_VERSION=2.5.1
+QUICKBOX_VERSION=2.5.3
 
 export TERM=xterm;TERM=xterm
 export PATH=/usr/local/sbin:/usr/sbin:/sbin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:/home/quickbox/.bin/:/usr/local/bin/quickbox/:/usr/local/bin/quickbox/package/:/usr/local/bin/quickbox/package/install/:/usr/local/bin/quickbox/package/remove/:/usr/local/bin/quickbox/plugin/:/usr/local/bin/quickbox/plugin/install/:/usr/local/bin/quickbox/plugin/remove/:/usr/local/bin/quickbox/system/:/usr/local/bin/quickbox/system/lang/
@@ -421,13 +421,13 @@ alias syscommands='cd /usr/local/bin/quickbox'
 # -> Performs some quick adjustments for certain conditions.
 home_diskwidget() {
   rm -f /srv/rutorrent/home/widgets/disk_data.php
-  cp /etc/QuickBox/themes/defaulted/widgets/disk_datah.php /srv/rutorrent/home/widgets/disk_data.php
+  cp /etc/QuickBox/dashboard/widgets/disk_datah.php /srv/rutorrent/home/widgets/disk_data.php
   chown www-data: /srv/rutorrent/home/widgets/disk_data.php
   service apache2 restart
 }
 root_diskwidget() {
   rm -f /srv/rutorrent/home/widgets/disk_data.php
-  cp /etc/QuickBox/themes/defaulted/widgets/disk_data.php /srv/rutorrent/home/widgets/disk_data.php
+  cp /etc/QuickBox/dashboard/widgets/disk_data.php /srv/rutorrent/home/widgets/disk_data.php
   chown www-data: /srv/rutorrent/home/widgets/disk_data.php
   service apache2 restart
 }
@@ -1847,41 +1847,6 @@ function upgradePlex() {
   fi
 }
 
-
-function upgradeOmbi {
-  OK=$(echo -e "[ \e[0;32mUpgrade Complete\e[00m ]")
-  user=$(cat /srv/rutorrent/home/db/master.txt)
-  echo -e "Stopping Ombi Service..."
-  if [[ -f /etc/systemd/system/plexrequests.service ]]; then
-    systemctl stop plexrequests
-  else
-   systemctl stop ombi
-  fi
-  cd /opt
-  if [[ -f plexrequests/PlexRequests.sqlite ]]; then
-    mv plexrequests ombi
-    mv ombi/PlexRequests.sqlite ombi/Ombi.sqlite
-    sed -i "s/PlexRequests.exe/Ombi.exe/g" /etc/systemd/system/plexrequests.service
-    mv /etc/systemd/system/plexrequests.service /etc/systemd/system/ombi.service
-    systemctl daemon-reload
-  fi
-  if [[ -f Ombi.zip ]]; then rm -f Ombi.zip; fi
-  echo -e "Backing up your database..."
-  cp ombi/Ombi.sqlite .
-  echo -e "Installing newest version..."
-  rm -rf ombi
-  curl -sL https://git.io/vKEJz | grep release | grep zip | cut -d "\"" -f 2 | sed -e 's/\/tidusjar/https:\/\/github.com\/tidusjar/g' | xargs wget --quiet -O Ombi.zip >/dev/null 2>&1
-  unzip Ombi.zip >/dev/null 2>&1
-  mv Release ombi
-  mv Ombi.sqlite ombi
-  if [[ -f Ombi.zip ]]; then rm -f Ombi.zip; fi
-  chown -R ${user}: ombi
-  echo -e "Starting Ombi ... "
-  systemctl start ombi
-  echo -e "Done! ... "
-  echo ${OK}
-}
-
 function upgradeDeluge() {
   OUTTO=/dev/null
   green=$(tput setaf 2)
@@ -1973,6 +1938,23 @@ function upgradeJackett() {
   chown ${username}.${username} -R Jackett
   echo "Starting Jackett..."
   systemctl start jackett@${username}
+  echo ${OK}
+}
+
+function upgradeSABnzbd() {
+  OK=$(echo -e "[ \e[0;32mUpgrade Complete\e[00m ]")
+  username=$(cat /srv/rutorrent/home/db/master.txt)
+  echo "Stopping Sabnzbd..."
+  systemctl stop sabnzbd@${username}
+  cd /home/${username}/SABnzbd
+  echo "Cloning latest SABnzbd Github Version"
+  git fetch --all
+  git reset --hard origin/master
+  git pull origin master
+  echo "Adjusting permissions..."
+  chown ${username}.${username} -R /home/${username}/SABnzbd
+  echo "Starting SABnzbd..."
+  systemctl start sabnzbd@${username}
   echo ${OK}
 }
 
